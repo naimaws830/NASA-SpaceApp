@@ -1,109 +1,127 @@
-# Climate Indices Dashboard
+📚 Complete Local Setup Guide
+🔧 Step 1: Install Prerequisites
+Before starting, install these tools on your computer:
 
-A modern, real-time climate analysis dashboard with NASA data integration, ARIMA forecasting, and interactive 3D globe visualization.
+1. Install Python 3.8+
+Download from: https://www.python.org/downloads/
+During installation, ☑️ check "Add Python to PATH"
+Verify: Open Command Prompt/Terminal → python --version
 
-## 🚀 Features
+2. Install Node.js 16+
+Download from: https://nodejs.org/
+Choose LTS version
+Verify: node --version and npm --version
 
-- **Real NASA MERRA-2 Data**: Authentic climate data from NASA Earthdata
-- **ARIMA Climate Forecasting**: Scientific forecasts for recent dates
-- **Interactive 3D Globe**: Click countries for instant climate analysis
-- **AI-Powered Summaries**: Natural language climate insights
-- **Consistent & Deterministic**: Same inputs always produce same results
+4. Install Yarn
+npm install -g yarn
+Verify: yarn --version
 
-## 📁 Project Structure
+4. Install VS Code Extensions (Recommended)
+Python
+ES7+ React/Redux/React-Native snippets
+Tailwind CSS IntelliSense
+Prettier - Code formatter
 
-```
-climate-dashboard/
-├── backend/
-│   ├── server.py          # FastAPI server with NASA integration & forecasting
-│   ├── requirements.txt   # Python dependencies
-│   └── .env              # Environment variables
-├── frontend/
-│   ├── src/
-│   │   ├── App.js         # Main dashboard component
-│   │   ├── App.css        # Dashboard styling
-│   │   ├── index.js       # React entry point
-│   │   ├── index.css      # Global styles
-│   │   ├── components/
-│   │   │   ├── CustomInteractiveGlobe.jsx  # 3D globe component
-│   │   │   └── ui/        # Essential UI components (5 files)
-│   │   └── lib/
-│   │       └── utils.js   # Utility functions
-│   ├── public/            # Static assets
-│   ├── package.json       # Node.js dependencies
-│   ├── craco.config.js    # Build configuration
-│   ├── tailwind.config.js # Tailwind CSS config
-│   ├── postcss.config.js  # PostCSS config
-│   └── .env              # Frontend environment
-└── README.md
-```
+🗂️ Step 2: Project Setup
+1. Download and Extract Project
 
-## 🛠️ Technology Stack
+# Download the GitHub zip file
+# Extract to your desired location, e.g., C:\projects\ or ~/projects/
+# You should have a folder like: climate-dashboard/
+2. Open in VS Code
 
-**Backend:**
-- FastAPI (Python web framework)
-- Motor + MongoDB (Database)
-- NASA Earthdata MERRA-2 API (Real climate data)
-- OpenRouter API (AI summaries)
-- ARIMA/SARIMA (Climate forecasting)
-- Scipy (Scientific computing)
+# Open VS Code
+# File → Open Folder → Select your climate-dashboard folder
+# Or use terminal: code climate-dashboard/
+🐍 Step 3: Backend Setup (Python/FastAPI)
+1. Open VS Code Terminal
 
-**Frontend:**
-- React 18 (UI framework)
-- Tailwind CSS (Styling)
-- React-Globe.gl (3D globe visualization)
-- Chart.js (Data visualization)
-- Lucide React (Icons)
+View → Terminal (or Ctrl+ / Cmd+)
+2. Navigate to Backend
 
-## 🔧 Installation & Setup
+cd backend
+3. Create Virtual Environment
 
-See the complete setup guide for local development.
+# Create virtual environment
+python -m venv venv
 
-## 🌍 Data Sources
+# Activate it
+# Windows (Command Prompt):
+venv\Scripts\activate
 
-- **Historical Data (>3 months)**: Real NASA MERRA-2 reanalysis data
-- **Recent Data (<3 months)**: ARIMA forecasts based on 30 years NASA data  
-- **Fallback**: Deterministic simulated data with geographic accuracy
+# Windows (PowerShell):
+venv\Scripts\Activate.ps1
 
-## 📊 Climate Parameters
+# macOS/Linux:
+source venv/bin/activate
 
-- Temperature (°C)
-- Precipitation (mm/day)  
-- Humidity (g/kg)
-- Wind Speed (m/s)
-- Atmospheric Pressure (hPa)
-- Heat Index (°C)
+# You should see (venv) prefix in your terminal
+4. Create Clean Requirements File Create backend/requirements.txt:
 
-## 🎯 Key Capabilities
+fastapi==0.110.1
+uvicorn[standard]==0.25.0
+motor==3.3.1
+pymongo==4.5.0
+python-dotenv==1.1.1
+pydantic==2.11.9
+numpy==2.3.3
+aiohttp==3.12.15
+netCDF4==1.7.2
+python-multipart==0.0.20
+requests==2.32.5
+scipy==1.16.2
 
-1. **Real-time Analysis**: Click any country on the 3D globe for instant climate data
-2. **Scientific Forecasting**: ARIMA-based predictions with confidence intervals
-3. **Extreme Event Probability**: Statistical analysis of climate conditions
-4. **AI Insights**: Natural language summaries of climate conditions
-5. **Interactive Visualization**: Professional 3D globe with climate-coded countries
+5. Install Dependencies
+pip install -r requirements.txt
 
-## 📈 System Architecture
+⚛️ Step 4: Frontend Setup (React/Node.js)
+1. Open New Terminal Tab
+Terminal → New Terminal (or Ctrl+Shift+ / Cmd+Shift+)
 
-```
-User Input → 3D Globe Click → Location Detection → Data Source Selection
-                                                      ↓
-NASA API (>3mo) ← Climate Analysis → ARIMA Forecast (<3mo)
-                                                      ↓  
-Database Storage ← Climate Dashboard ← AI Summary ← Data Processing
-```
+2. Navigate to Frontend
+cd frontend
 
-## 🌟 Unique Features
+3. Install Dependencies
+yarn install
 
-- **Deterministic Results**: Same location/date/time always produces identical analysis
-- **Geographic Intelligence**: Location-aware climate modeling for accuracy
-- **Seamless Data Integration**: Automatic switching between real data and forecasts
-- **Professional UI**: Modern, responsive design with scientific visualization
-- **No External Dependencies**: Runs completely independently
+4. Create Environment File Create frontend/.env:
+REACT_APP_BACKEND_URL=http://localhost:8000
 
-## 📄 License
+5. Verify Configuration Files Exist Check these files exist in frontend/:
 
-MIT License - Feel free to use and modify for your projects.
+package.json
+craco.config.js
+tailwind.config.js
+postcss.config.js
 
----
+🗄️ Step 5: Database Setup (Local MongoDB)
 
-**Built with real NASA climate data and scientific forecasting methods for accurate, reliable climate analysis.**
+# macOS with Homebrew:
+brew install mongodb-community
+brew services start mongodb-community
+
+# Windows: Download MongoDB Community Server
+# https://www.mongodb.com/try/download/community
+
+# Ubuntu/Linux:
+sudo apt install mongodb
+sudo systemctl start mongodb
+
+🚀 Step 7: Running the Application
+
+1. Start Backend (Terminal 1)
+cd backend
+# Make sure virtual environment is activated (you should see (venv))
+uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+You should see:
+
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process
+INFO:     Started server process
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+
+2. Start Frontend (Terminal 2)
+cd frontend
+yarn start
+Your browser should open automatically to http://localhost:3000

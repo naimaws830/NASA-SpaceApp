@@ -70,8 +70,8 @@ netCDF4==1.7.2
 python-multipart==0.0.20
 requests==2.32.5
 scipy==1.16.2
-5. Install Dependencies
 
+5. Install Dependencies
 pip install -r requirements.txt
 
 ⚛️ Step 4: Frontend Setup (React/Node.js)

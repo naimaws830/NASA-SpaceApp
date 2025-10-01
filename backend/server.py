@@ -151,8 +151,8 @@ async def geocode_location(location: str) -> tuple[float, float]:
         logger.error(f"Geocoding error: {e}")
         return 40.7128, -74.0060
 
-async def fetch_nasa_data_enhanced(url: str) -> Optional[float]:
-    """Enhanced NASA data fetching with NASA Earthdata authentication"""
+async def fetch_nasa_data_enhanced(url: str, target_hour: int = None) -> Optional[List[float]]:
+    """Enhanced NASA data fetching that returns ALL 24 hours of data"""
     try:
         # NASA Earthdata credentials
         nasa_username = os.environ.get('NASA_USERNAME')
@@ -192,10 +192,11 @@ async def fetch_nasa_data_enhanced(url: str) -> Optional[float]:
                     content_text = await response.text()
                     logger.info(f"Successfully fetched ASCII data from NASA")
                     
-                    # Parse ASCII format OPeNDAP response
+                    # Parse ASCII format OPeNDAP response to get ALL 24 hours
+                    hourly_values = []
+                    
                     try:
                         # ASCII format contains the data in text format
-                        # Look for the actual data values in the response
                         lines = content_text.split('\n')
                         
                         # Find lines that contain numeric data
@@ -213,46 +214,55 @@ async def fetch_nasa_data_enhanced(url: str) -> Optional[float]:
                                             value = float(value_str)
                                             # Check if it's a reasonable climate value
                                             if not (math.isnan(value) or math.isinf(value)):
-                                                # Be more specific about which variable we're parsing
-                                                # Check the URL to determine what we're expecting
+                                                # Validate based on variable type
                                                 if 'T2M' in url:  # Temperature
-                                                    if 200 < value < 350:  # Temperature in Kelvin (-73°C to 77°C)
-                                                        logger.info(f"Found temperature value: {value}K ({value-273.15:.1f}°C)")
-                                                        return value
+                                                    if 200 < value < 350:  # Temperature in Kelvin
+                                                        hourly_values.append(value)
+                                                        continue
                                                 elif 'PRECTOT' in url:  # Precipitation
                                                     if 0 <= value < 0.01:  # Precipitation kg/m²/s
-                                                        logger.info(f"Found precipitation value: {value} kg/m²/s")
-                                                        return value
+                                                        hourly_values.append(value)
+                                                        continue
                                                 elif 'QV2M' in url:  # Humidity
                                                     if 0 <= value < 0.1:  # Humidity kg/kg
-                                                        logger.info(f"Found humidity value: {value} kg/kg")
-                                                        return value
+                                                        hourly_values.append(value)
+                                                        continue
                                                 elif 'U10M' in url or 'V10M' in url:  # Wind components
                                                     if -100 < value < 100:  # Wind m/s
-                                                        logger.info(f"Found wind value: {value} m/s")
-                                                        return value
+                                                        hourly_values.append(value)
+                                                        continue
                                                 elif 'PS' in url:  # Pressure
                                                     if 30000 < value < 110000:  # Pressure Pa
-                                                        logger.info(f"Found pressure value: {value} Pa")
-                                                        return value
+                                                        hourly_values.append(value)
+                                                        continue
                                                 else:
                                                     # Generic reasonable value
-                                                    logger.info(f"Found generic value: {value}")
-                                                    return value
+                                                    hourly_values.append(value)
                                         except ValueError:
                                             continue
                                 except Exception:
                                     continue
                         
-                        logger.warning("No valid numeric data found in ASCII response")
-                        return None
+                        logger.info(f"Found {len(hourly_values)} hourly values")
+                        
+                        # If we have exactly 24 values, return them all
+                        if len(hourly_values) == 24:
+                            if target_hour is not None and 0 <= target_hour < 24:
+                                # Return specific hour if requested
+                                return [hourly_values[target_hour]]
+                            return hourly_values
+                        elif len(hourly_values) > 0:
+                            # If we have some values but not 24, return what we have
+                            logger.warning(f"Expected 24 hours but got {len(hourly_values)} values")
+                            if target_hour is not None and target_hour < len(hourly_values):
+                                return [hourly_values[target_hour]]
+                            return hourly_values
+                        else:
+                            logger.warning("No valid numeric data found in ASCII response")
+                            return None
                         
                     except Exception as e:
                         logger.error(f"ASCII parsing failed: {e}")
-                        return None
-                        
-                    except Exception as e:
-                        logger.error(f"NetCDF parsing failed: {e}")
                         return None
                         
                 elif response.status == 401:
@@ -391,12 +401,12 @@ async def get_historical_climate_data(location: str, lat: float, lon: float, yea
                 "pressure": NASA_ENDPOINTS["pressure"].format(year=year, month=month, date_str=date_str, lat_idx=lat_idx, lon_idx=lon_idx)
             }
             
-            # Fetch data
+            # Fetch data - get all 24 hours and use noon (hour 12) as representative
             year_data = {}
             for key, url in urls.items():
-                data = await fetch_nasa_data_enhanced(url)
-                if data is not None:
-                    year_data[key] = data
+                data_list = await fetch_nasa_data_enhanced(url, target_hour=12)  # Use noon data
+                if data_list and len(data_list) > 0:
+                    year_data[key] = data_list[0]
                 else:
                     logger.warning(f"No data for {key} in {year}")
                     break
@@ -506,6 +516,7 @@ def generate_climate_forecast(historical_data: dict, target_month: int, location
     
     logger.info(f"Generated forecasts for {location}: Temp {forecasts.get('temperature', {}).get('value', 'N/A')}°C")
     return forecasts
+
 def calculate_wind_speed(u_wind: float, v_wind: float) -> float:
     """Calculate wind speed from u and v components"""
     return math.sqrt(u_wind**2 + v_wind**2)
@@ -651,6 +662,10 @@ async def get_climate_data(request: ClimateRequest):
         year = date_str[:4]
         month = date_str[4:6]
         
+        # Extract the target hour from the time
+        hour = int(request.time.split(':')[0])  # "14:00" → 14
+        logger.info(f"Processing request for {request.location} at {request.date} {request.time} (hour: {hour})")
+        
         # Update NASA endpoints with correct date using your original OPeNDAP URLs
         nasa_urls = {
             "temperature": NASA_ENDPOINTS["temperature"].format(year=year, month=month, date_str=date_str, lat_idx=lat_idx, lon_idx=lon_idx),
@@ -715,8 +730,6 @@ async def get_climate_data(request: ClimateRequest):
         if not forecast_success:
             # Try to fetch real NASA data first, then fallback to simulated data
             try:
-                # Parse time to get hour index (0-23)
-                hour = int(request.time.split(':')[0])
                 month_num = int(request.date[4:6])
                 
                 # Check if the requested date is too recent (NASA has 2-3 month delay)
@@ -728,13 +741,18 @@ async def get_climate_data(request: ClimateRequest):
                 if request_date <= cutoff_date:
                     # Attempt to fetch real NASA data for dates older than 3 months
                     nasa_data_attempted = True
-                    logger.info(f"Attempting to fetch real NASA data for {request.date}")
+                    logger.info(f"Attempting to fetch real NASA data for {request.date} at hour {hour}")
                     
                     nasa_data = {}
                     for key, url in nasa_urls.items():
-                        logger.info(f"Fetching {key} from NASA...")
-                        data = await fetch_nasa_data_enhanced(url)
-                        nasa_data[key] = data
+                        logger.info(f"Fetching {key} from NASA for hour {hour}...")
+                        # Pass the target hour to get specific hourly data
+                        data_list = await fetch_nasa_data_enhanced(url, target_hour=hour)
+                        if data_list and len(data_list) > 0:
+                            nasa_data[key] = data_list[0]
+                            logger.info(f"✅ Got {key} for hour {hour}: {data_list[0]}")
+                        else:
+                            nasa_data[key] = None
                         
                     # Check if we got valid real data
                     if all(v is not None for v in nasa_data.values()):
@@ -746,7 +764,7 @@ async def get_climate_data(request: ClimateRequest):
                         v_wind = nasa_data["v_wind"]
                         pressure = nasa_data["pressure"] / 100  # Convert Pa to hPa
                         
-                        logger.info(f"✅ Successfully using REAL NASA data for {request.location}!")
+                        logger.info(f"✅ Successfully using REAL NASA data for {request.location} at hour {hour}!")
                         
                         # Calculate wind speed
                         wind_speed = calculate_wind_speed(u_wind, v_wind)
@@ -773,15 +791,14 @@ async def get_climate_data(request: ClimateRequest):
                     
             except Exception as e:
                 if nasa_data_attempted:
-                    logger.warning(f"🌐 NASA API failed for {request.date}: {e}")
+                    logger.warning(f"🌐 NASA API failed for {request.date} hour {hour}: {e}")
                 else:
-                    logger.info(f"🌐 Using simulated data for {request.date}: {e}")
+                    logger.info(f"🌐 Using simulated data for {request.date} hour {hour}: {e}")
                 
-                # Generate consistent simulated data based on location and season
-                # Use deterministic seeding based on location, date, and time for reproducible results
+                # Generate consistent simulated data based on location, season, and HOUR
                 import hashlib
                 
-                # Create a deterministic seed from the input parameters
+                # Create a deterministic seed from the input parameters including HOUR
                 seed_string = f"{request.location}_{request.date}_{request.time}"
                 seed_hash = hashlib.md5(seed_string.encode()).hexdigest()
                 seed_value = int(seed_hash[:8], 16) % (2**32)  # Convert to 32-bit integer
@@ -814,16 +831,26 @@ async def get_climate_data(request: ClimateRequest):
                 elif is_summer:
                     base_temp += 8
                 
-                # Time-based adjustments (more realistic diurnal cycle)
-                hour = int(request.time.split(':')[0])
-                if 6 <= hour <= 18:  # Daytime
-                    temp_adjustment = 3
-                else:  # Nighttime
+                # REALISTIC Time-based adjustments (diurnal cycle)
+                # Temperature peaks around 2-3 PM, lowest around 5-6 AM
+                if 2 <= hour <= 4:  # Early morning - coldest
+                    temp_adjustment = -6
+                elif 5 <= hour <= 8:  # Morning - warming up
                     temp_adjustment = -3
+                elif 9 <= hour <= 11:  # Late morning
+                    temp_adjustment = 0
+                elif 12 <= hour <= 14:  # Early afternoon - warmest
+                    temp_adjustment = +4
+                elif 15 <= hour <= 17:  # Late afternoon
+                    temp_adjustment = +2
+                elif 18 <= hour <= 20:  # Evening - cooling
+                    temp_adjustment = -1
+                else:  # Night
+                    temp_adjustment = -4
                 
-                temperature = base_temp + temp_adjustment + np.random.normal(0, 2)  # Reduced variance
+                temperature = base_temp + temp_adjustment + np.random.normal(0, 1)  # Reduced variance
                 
-                # Precipitation based on climate zone (more consistent)
+                # Precipitation based on climate zone and time (more likely in afternoon)
                 base_precip = 2
                 if any(place in location_lower for place in ['desert', 'sahara', 'arizona']):
                     base_precip = 0.1
@@ -832,25 +859,45 @@ async def get_climate_data(request: ClimateRequest):
                 elif any(place in location_lower for place in ['tropical', 'hawaii', 'kuching', 'tawau', 'borneo', 'malaysia']):
                     base_precip = 4  # Consistent tropical precipitation
                 
-                precipitation = max(0, base_precip + np.random.normal(0, 1.5))  # Reduced variance
+                # Afternoon precipitation more likely
+                if 12 <= hour <= 18:
+                    precip_multiplier = 1.5
+                else:
+                    precip_multiplier = 0.7
+                    
+                precipitation = max(0, base_precip * precip_multiplier + np.random.normal(0, 1))
                 
-                # Humidity based on climate (more consistent)
+                # Humidity based on climate and time (higher at night, lower in afternoon)
                 base_humidity = 12
                 if any(place in location_lower for place in ['desert', 'arizona', 'nevada']):
                     base_humidity = 5
                 elif any(place in location_lower for place in ['tropical', 'humid', 'amazon', 'florida', 'kuching', 'tawau', 'borneo', 'malaysia']):
                     base_humidity = 18  # Higher consistent humidity for tropical locations
                 
-                humidity = max(1, base_humidity + np.random.normal(0, 2))  # Reduced variance
+                # Humidity higher at night, lower during day
+                if 0 <= hour <= 6:  # Night - higher humidity
+                    humidity_adjustment = +3
+                elif 12 <= hour <= 16:  # Afternoon - lower humidity
+                    humidity_adjustment = -2
+                else:
+                    humidity_adjustment = 0
+                    
+                humidity = max(1, base_humidity + humidity_adjustment + np.random.normal(0, 1))
                 
-                # Wind patterns (more realistic)
+                # Wind patterns - often stronger during day
                 if any(place in location_lower for place in ['coastal', 'island', 'kuching', 'tawau', 'borneo']):
                     base_wind = 8  # Coastal areas tend to be windier
                 else:
                     base_wind = 5
+                
+                # Wind often stronger in afternoon
+                if 10 <= hour <= 18:
+                    wind_multiplier = 1.3
+                else:
+                    wind_multiplier = 0.8
                     
-                u_wind = np.random.normal(0, base_wind)
-                v_wind = np.random.normal(0, base_wind) 
+                u_wind = np.random.normal(0, base_wind * wind_multiplier)
+                v_wind = np.random.normal(0, base_wind * wind_multiplier) 
                 wind_speed = calculate_wind_speed(u_wind, v_wind)
                 
                 # Pressure variations (more realistic)
@@ -860,7 +907,7 @@ async def get_climate_data(request: ClimateRequest):
                 elif any(place in location_lower for place in ['tropical', 'kuching', 'tawau', 'malaysia', 'borneo']):
                     base_pressure -= 10  # Slightly lower pressure in tropics
                 
-                pressure = base_pressure + np.random.normal(0, 8)  # Reduced variance
+                pressure = base_pressure + np.random.normal(0, 5)  # Reduced variance
                 
                 # Calculate chances using simulated data  
                 temp_chance = calculate_temperature_chance(temperature, lat, month_num)

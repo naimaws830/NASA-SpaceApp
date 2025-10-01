@@ -125,5 +125,3 @@ INFO:     Application startup complete.
      cd frontend
      yarn start
      Your browser should open automatically to http://localhost:3000
-
-

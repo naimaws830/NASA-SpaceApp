@@ -1,6 +1,5 @@
 📚 Complete Local Setup Guide
 
-
 🔧 Step 1: Install Prerequisites
     
 1. Install Python 3.8+
@@ -18,39 +17,37 @@
     Verify: yarn --version
 
 4. Install MongoDB & MongoDB Shell
-     # Windows: Download MongoDB Community Server
-     # https://www.mongodb.com/try/download/community
-     #https://www.mongodb.com/try/download/shell
+     Windows: Download MongoDB Community Server
+     - https://www.mongodb.com/try/download/community
+     - https://www.mongodb.com/try/download/shell
      Add path to system variable. Eg : C:\Program Files\MongoDB\Server\8.2\bin
      
 
 🗂️ Step 2: Project Setup
 
-
 1. Download and Extract Project
-    # Download the GitHub zip file
-    # Extract to your desired location, e.g., C:\projects\ or ~/projects/
-    # You should have a folder like: climate-dashboard/
+    - Download the GitHub zip file
+    - Extract to your desired location, e.g., C:\projects\ or ~/projects/
+    - You should have a folder like: climate-dashboard/
 
 
 2. Open in VS Code
-    # Open VS Code
-    # File → Open Folder → Select your climate-dashboard folder
+    - Open VS Code
+    - File → Open Folder → Select your climate-dashboard folder
 
 
 🐍 Step 3: Backend Setup (Python/FastAPI)
 
-
 1. Open VS Code Terminal
-    View → Terminal (or Ctrl+ / Cmd+)
+     View → Terminal (or Ctrl+ / Cmd+)
 
 2. Navigate to Backend
-    cd backend
+     cd backend
 
 3. Create Virtual Environment
- 
      python -m venv venv
-     venv\Scripts\Activat
+     venv\Scripts\Activate
+   
 4. Create Clean Requirements File Create backend/requirements.txt:
 
 fastapi==0.110.1
@@ -67,16 +64,12 @@ requests==2.32.5
 scipy==1.16.2
 
 5. Add DB_NAME in .env file
-
-    DB_NAME : climate_dashboard
+     DB_NAME : climate_dashboard
 
 6. Install Dependencies
-
-
      pip install -r requirements.txt
 
 ⚛️ Step 4: Frontend Setup (React/Node.js)
-
 
 1. Open New Terminal Tab
     Terminal → New Terminal (or Ctrl+Shift+ / Cmd+Shift+)
@@ -95,20 +88,17 @@ scipy==1.16.2
 
 6. Verify Configuration Files Exist Check these files exist in frontend/:
 
-package.json
-craco.config.js
-tailwind.config.js
-postcss.config.js
-
+    package.json
+    craco.config.js
+    tailwind.config.js
+    postcss.config.js
 
 🚀 Step 5: Running the Application
 
 1. Start Backend (Terminal 1)
-
-
-     cd backend
-     # Make sure virtual environment is activated (you should see (venv)) 
-     # Enter venv\Scripts\Activate if no (venv) at initial
+     - cd backend
+     - Make sure virtual environment is activated (you should see (venv)) 
+     - Enter venv\Scripts\Activate if no (venv) at initial
      uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 
 You should see:
@@ -120,8 +110,6 @@ INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 
 2. Start Frontend (Terminal 2)
-
-
-     cd frontend
-     yarn start
-     Your browser should open automatically to http://localhost:3000
+     - cd frontend
+     - yarn start
+     - Your browser should open automatically to http://localhost:3000
